@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quorum</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --ink:#15181d; --muted:#61676f;
+    --line:#e2e5ea; --accent:#2f5bd7; --accent-soft:#eaf0fe;
+    --warn:#b3541e; --warn-soft:#fdf0e6; --ok:#1f7a4d; --ok-soft:#e7f4ed;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#111317; --surface:#181b21; --ink:#e9ecf1; --muted:#9aa2ad;
+      --line:#2a2f37; --accent:#7ea2ff; --accent-soft:#1c2740;
+      --warn:#e0925c; --warn-soft:#2e2318; --ok:#6bc79a; --ok-soft:#16261e;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  header{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 16px;
+    position:sticky;top:0;z-index:20;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .brand{font-weight:700;font-size:19px;letter-spacing:-.02em}
+  .brand span{color:var(--accent)}
+  .tag{color:var(--muted);font-size:13px;border-left:1px solid var(--line);padding-left:16px}
+  .spacer{flex:1}
+  .switch{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px}
+  .switch button{border:0;background:none;color:var(--muted);padding:6px 16px;border-radius:999px;
+    cursor:pointer;font-size:14px;font-weight:600;font-family:inherit}
+  .switch button.on{background:var(--accent);color:#fff}
+  main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+  .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+  @media (max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  h2{font-size:16px;margin:0 0 4px}
+  h3{font-size:14px;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .notice{background:var(--accent-soft);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;font-size:13px;color:var(--ink);margin-bottom:14px}
+  button.act{background:var(--accent);color:#fff;border:0;padding:9px 16px;border-radius:7px;
+    font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  button.act:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--ink);padding:7px 13px;
+    border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit}
+  select,textarea,input{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:7px;background:var(--surface);color:var(--ink);width:100%}
+  textarea{min-height:66px;resize:vertical}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 4px;
+    text-transform:uppercase;letter-spacing:.05em}
+
+  /* CV */
+  .cv{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px 28px;
+    font-family:Georgia,"Times New Roman",serif;font-size:13.5px;line-height:1.5}
+  .cv .nm{font-size:21px;font-weight:700;letter-spacing:.02em;font-family:inherit}
+  .cv .ct{color:var(--muted);font-size:12px;margin:3px 0 14px}
+  .cv .sec{font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    border-bottom:1px solid var(--line);padding-bottom:3px;margin:16px 0 8px;font-family:inherit}
+  .cv .role{display:flex;justify-content:space-between;font-weight:700;margin-top:6px;gap:10px}
+  .cv .role em{font-style:normal;font-weight:400;color:var(--muted)}
+  .ln{position:relative;padding:3px 30px 3px 16px;border-radius:5px}
+  .ln::before{content:"•";position:absolute;left:4px;color:var(--muted)}
+  .pickable .ln{cursor:pointer}
+  .pickable .ln:hover{background:var(--accent-soft)}
+  .ln.sel{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
+  .pin{position:absolute;right:4px;top:3px;background:var(--accent);color:#fff;font-size:10px;
+    font-weight:700;border-radius:999px;min-width:17px;height:17px;line-height:17px;text-align:center;
+    font-family:-apple-system,sans-serif}
+  .ln.changed{background:var(--ok-soft)}
+
+  /* synthesis */
+  .item{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--surface)}
+  .item.top{border-color:var(--accent)}
+  .ihead{display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+  .rank{background:var(--accent);color:#fff;font-size:11px;font-weight:700;width:20px;height:20px;
+    border-radius:5px;display:grid;place-items:center;flex:none}
+  .intent{font-weight:700;font-size:14px}
+  .agree{margin-left:auto;font-size:11.5px;color:var(--muted);font-weight:600;white-space:nowrap}
+  .bar{height:4px;background:var(--line);border-radius:3px;overflow:hidden;margin:7px 0 9px}
+  .bar i{display:block;height:100%;background:var(--accent)}
+  .quote{font-family:Georgia,serif;font-size:13px;color:var(--muted);border-left:2px solid var(--line);
+    padding-left:9px;margin:6px 0}
+  .who{font-size:12px;color:var(--muted);margin-top:6px}
+  .who b{color:var(--ink);font-weight:600}
+  .rw{background:var(--ok-soft);border:1px solid var(--line);border-radius:7px;padding:9px 11px;
+    margin-top:9px;font-size:13px;font-family:Georgia,serif}
+  .rw b{font-family:-apple-system,sans-serif;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ok);display:block;margin-bottom:4px;font-weight:700}
+  .conflict{background:var(--warn-soft);border:1px solid var(--line);border-left:3px solid var(--warn);
+    border-radius:7px;padding:12px;margin-bottom:10px}
+  .conflict .intent{color:var(--warn)}
+  .side{display:flex;gap:9px;margin-top:8px;font-size:13px}
+  .side div{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px}
+  .lowsig{font-size:12px;color:var(--muted);font-style:italic;margin-top:4px}
+  .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:26px 10px}
+  .chip{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:999px;
+    padding:2px 9px;font-size:11.5px;color:var(--muted);margin:2px 4px 2px 0}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .st{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .st.ch{background:var(--ok-soft);color:var(--ok)}
+  .st.un{background:var(--bg);color:var(--muted)}
+  .stars{letter-spacing:2px;cursor:pointer;font-size:17px;color:var(--line);user-select:none}
+  .stars b{color:#e0a020;font-weight:400}
+  .hidden{display:none !important}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:26px;line-height:1.7}
+
+  /* login gate */
+  .gate{position:fixed;inset:0;background:var(--bg);z-index:60;display:grid;place-items:center;padding:20px}
+  .gatecard{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:28px;width:100%;max-width:400px}
+  .gatecard .brand{font-size:24px;margin-bottom:4px}
+  .err{color:var(--warn);font-size:13px;margin-top:10px;min-height:18px}
+  .demo{margin-top:20px;border-top:1px solid var(--line);padding-top:14px}
+  .demo .sub{margin-bottom:8px}
+  .acct{display:flex;align-items:center;gap:8px;width:100%;background:var(--bg);border:1px solid var(--line);
+    border-radius:7px;padding:8px 10px;margin-bottom:6px;cursor:pointer;font-family:inherit;
+    font-size:12.5px;color:var(--ink);text-align:left}
+  .acct:hover{border-color:var(--accent)}
+  .acct b{font-weight:600}
+  .acct span{margin-left:auto;color:var(--muted);font-size:11px}
+  .who-chip{display:flex;align-items:center;gap:9px;font-size:13px}
+  .who-chip .role{background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;
+    padding:2px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em}
+  .grant{background:var(--ok-soft);border:1px solid var(--line);border-radius:8px;padding:9px 12px;
+    font-size:12.5px;color:var(--muted);margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<!-- ================= SIGN IN ================= -->
+<div class="gate" id="gate">
+  <div class="gatecard">
+    <div class="brand">Quor<span>u</span>m</div>
+    <p class="sub">Sign in to review a CV or to see your own feedback.</p>
+
+    <label>Email</label>
+    <input id="inU" type="text" autocomplete="off" placeholder="you@isb.edu"
+           onkeydown="if(event.key==='Enter')signIn()">
+
+    <label>Password</label>
+    <input id="inP" type="password" autocomplete="off" placeholder="Password"
+           onkeydown="if(event.key==='Enter')signIn()">
+
+    <div class="err" id="gateErr"></div>
+    <button class="act" style="width:100%" onclick="signIn()">Sign in</button>
+
+    <div class="demo">
+      <p class="sub">Demo accounts, password <b>demo123</b>. Click one to fill the form.</p>
+      <div id="acctList"></div>
+    </div>
+  </div>
+</div>
+
+<header class="hidden" id="topbar">
+  <div class="brand">Quor<span>u</span>m</div>
+  <div class="tag">Identified reviewers. Isolated opinions. One ranked list.</div>
+  <div class="spacer"></div>
+  <div class="who-chip">
+    <span id="whoName"></span>
+    <span class="role" id="whoRole"></span>
+    <button class="ghost" onclick="signOut()">Sign out</button>
+  </div>
+</header>
+
+<main id="app" class="hidden">
+
+<!-- ================= STUDENT ================= -->
+<section id="viewStudent">
+  <div class="wrap">
+    <div>
+      <div class="card" style="padding:12px 14px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0">Arjun Mehta</h2>
+            <div class="sub" style="margin:2px 0 0">Target role: <b>Product Management</b> · <span id="verLabel">Version 1</span></div>
+          </div>
+          <div class="spacer" style="flex:1"></div>
+          <button class="ghost" id="btnV2" onclick="uploadV2()">Upload revised CV (v2)</button>
+        </div>
+      </div>
+      <div id="cvStudent" class="cv"></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Review synthesis</h2>
+        <p class="sub">Three reviews are in. Agreement is weighted by each reviewer's relevance to your target role, not by seniority.</p>
+        <button class="act" id="btnRun" onclick="runSynthesis()">Run synthesis on 3 reviews</button>
+        <div id="synthOut" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card hidden" id="cardVersions">
+        <h2>Version history</h2>
+        <p class="sub">Each comment shows whether the line it pointed at actually changed. The system states the fact and offers a read; it does not decide whether you ignored anyone.</p>
+        <div id="verOut"></div>
+      </div>
+
+      <div class="card hidden" id="cardRate">
+        <h2>Rate your reviewers</h2>
+        <p class="sub">Private to Quorum. Used as a quality floor, never shown on a reviewer's profile.</p>
+        <div id="rateOut"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REVIEWER ================= -->
+<section id="viewReviewer" class="hidden">
+  <div class="wrap">
+    <div>
+      <div class="card" style="padding:12px 14px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0" id="revName"></h2>
+            <div class="sub" style="margin:2px 0 0" id="revCred"></div>
+          </div>
+        </div>
+      </div>
+      <div class="grant" id="grantNote"></div>
+      <div id="cvReviewer" class="cv pickable"></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="notice" id="isoNote"></div>
+        <h2>Add a comment</h2>
+        <p class="sub">Click any line in the CV to attach a comment to it, or leave it unselected for a comment about the document as a whole.</p>
+
+        <label>Attached to</label>
+        <div id="selLine" style="font-family:Georgia,serif;font-size:13px;background:var(--bg);
+             border:1px solid var(--line);border-radius:7px;padding:9px 11px;color:var(--muted)">
+          Nothing selected — this will be a document-level comment
+        </div>
+
+        <label>What should change</label>
+        <select id="intentSel"></select>
+
+        <label>Comment</label>
+        <textarea id="cmtText" placeholder="Say what is wrong and what would fix it."></textarea>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="act" onclick="addComment()">Add comment</button>
+          <button class="ghost" onclick="clearSel()">Clear selection</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Before you submit</h2>
+        <p class="sub">Every reviewer answers this. It is what guarantees three independent reviews have something in common to compare.</p>
+        <label>Name the three weakest lines</label>
+        <div id="weakPick"></div>
+      </div>
+
+      <div class="card">
+        <h2>Your comments so far</h2>
+        <div id="myCmts"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="foot">
+  Quorum · class prototype · consensus weighting is computed live in the browser; CV parsing and bullet rewrites are simulated.
+</div>
+</main>
+
+<script>
+/* ---------------- demo data ---------------- */
+
+const TARGET_FUNCTION = "Product";
+
+const REVIEWERS = [
+  {id:"r1", name:"Ananya Rao",    cred:"Senior PM, Flipkart",              func:"Product",    hired:true},
+  {id:"r2", name:"Karthik Menon", cred:"Engagement Manager, McKinsey",     func:"Consulting", hired:true},
+  {id:"r3", name:"Devika Shah",   cred:"Associate PM, Razorpay",           func:"Product",    hired:false}
+];
+
+// Relevance to the student's target function, not seniority or brand.
+function relevance(r){
+  return (r.func === TARGET_FUNCTION ? 0.70 : 0.25) + (r.hired ? 0.30 : 0.10);
+}
+REVIEWERS.forEach(r => r.w = +relevance(r).toFixed(2));
+
+const INTENTS = {
+  quantify:{label:"Add a number",            opposites:[]},
+  vague:   {label:"Name what you owned",     opposites:[]},
+  cut:     {label:"Cut this line",           opposites:["expand","promote","detail"]},
+  expand:  {label:"Expand this",             opposites:["cut","shorten"]},
+  shorten: {label:"Trim this",               opposites:["detail","expand"]},
+  detail:  {label:"Add specifics",           opposites:["shorten","cut"]},
+  promote: {label:"Move it higher",          opposites:["cut"]}
+};
+
+const CV_V1 = {
+  name:"Arjun Mehta",
+  contact:"Indian School of Business · PGP 2026-27 · Hyderabad · arjun.mehta@isb.edu",
+  sections:[
+    {title:"Education", rows:[
+      {role:"Indian School of Business", meta:"PGP, 2026-27", lines:[]},
+      {role:"NIT Tiruchirappalli", meta:"B.Tech Electronics, 2018-22 · CGPA 8.6", lines:[]}
+    ]},
+    {title:"Professional Experience", rows:[
+      {role:"Qualcomm", meta:"Senior Engineer · 2022-2026", lines:[
+        {id:"L1", t:"Responsible for validation of the wireless chipset module across multiple product lines"},
+        {id:"L2", t:"Worked with cross functional teams to improve the testing process and reduce delays"},
+        {id:"L3", t:"Led a team of 4 engineers to deliver firmware releases on schedule"},
+        {id:"L4", t:"Reduced post-silicon validation cycle time by 30% by automating the regression suite, adopted across 3 product families"},
+        {id:"L5", t:"Published 2 application notes on the company developer portal"}
+      ]}
+    ]},
+    {title:"Positions of Responsibility", rows:[
+      {role:"Deep Tech Special Interest Group, ISB", meta:"Founder · 2026", lines:[
+        {id:"L6", t:"Founded the group and grew membership to 120 students in one term"},
+        {id:"L7", t:"Organised a hardware hackathon with participation from 60 students"}
+      ]}
+    ]}
+  ]
+};
+
+// v2 = what the student actually changed after reading the ranked list
+const V2_EDITS = {
+  L1:"Owned post-silicon validation for 3 wireless chipset families shipping 12M units a year, cutting escaped defects from 14 to 3 per release",
+  L2:"Rebuilt the firmware release process with QA and systems teams, cutting average release slip from 11 days to 2"
+};
+
+const SEED_COMMENTS = [
+  {rid:"r1", line:"L1", intent:"quantify", text:"There is not a single number in this line. What scale, how many parts, what outcome?"},
+  {rid:"r2", line:"L1", intent:"quantify", text:"Needs a metric. Structure it as action then impact, in that order."},
+  {rid:"r3", line:"L1", intent:"quantify", text:"This reads like a job description, not an achievement. No PM will read past it."},
+
+  {rid:"r1", line:"L2", intent:"vague",    text:"'Worked with cross functional teams' says nothing. Which teams, and what did you decide?"},
+  {rid:"r3", line:"L2", intent:"vague",    text:"What was the delay before and after? Own the decision, not the collaboration."},
+
+  {rid:"r1", line:"L3", intent:"cut",      text:"Team leadership with no outcome attached is filler. Cut it or give it a result."},
+  {rid:"r2", line:"L3", intent:"expand",   text:"Expand this. People leadership is what differentiates you in interviews."},
+
+  {rid:"r2", line:"L4", intent:"shorten",  text:"Too much packed into one line. Trim the product family detail."},
+  {rid:"r3", line:"L4", intent:"detail",   text:"Keep the detail and add what the 30% meant in release cycles. This is your best line."},
+
+  {rid:"r2", line:"L5", intent:"cut",      text:"Application notes will not read as relevant for a product role."},
+
+  {rid:"r1", line:"",   intent:"shorten",  text:"Document level: this runs past one page in the PDF. ISB CVs are one page, no exceptions."}
+];
+
+const SEED_WEAK = { r1:["L1","L2","L3"], r2:["L1","L3","L5"], r3:["L1","L2","L4"] };
+
+const REWRITES = {
+  L1:"Owned post-silicon validation for 3 wireless chipset families shipping 12M units a year, cutting escaped defects from 14 to 3 per release.",
+  L2:"Rebuilt the firmware release process with QA and systems teams, cutting average release slip from 11 days to 2."
+};
+
+/* ---------------- accounts ----------------
+   A class prototype. These credentials sit in the page source, so this is an
+   access gate for the demo, not security. Real auth needs a server. */
+
+const ACCOUNTS = [
+  {u:"arjun@isb.edu",      p:"demo123", role:"student",  label:"Arjun Mehta",   note:"CV owner"},
+  {u:"ananya@quorum.dev",  p:"demo123", role:"reviewer", rid:"r1"},
+  {u:"karthik@quorum.dev", p:"demo123", role:"reviewer", rid:"r2"},
+  {u:"devika@quorum.dev",  p:"demo123", role:"reviewer", rid:"r3"}
+];
+
+let session = null;
+
+/* ---------------- state ---------------- */
+
+let comments = SEED_COMMENTS.map(c => Object.assign({}, c));
+let weak     = JSON.parse(JSON.stringify(SEED_WEAK));
+let meId     = "r1";
+let selected = "";
+let version  = 1;
+let lastRanked = [];
+let ratings  = {};
+
+const byId    = id => document.getElementById(id);
+const reviewer= id => REVIEWERS.find(r => r.id === id);
+
+function allLines(){
+  const out = [];
+  CV_V1.sections.forEach(s => s.rows.forEach(r => r.lines.forEach(l => out.push(l))));
+  return out;
+}
+function lineText(id){
+  if(version === 2 && V2_EDITS[id]) return V2_EDITS[id];
+  const l = allLines().find(x => x.id === id);
+  return l ? l.t : "";
+}
+
+/* ---------------- the actual consensus engine ---------------- */
+
+function synthesise(){
+  const totalW = REVIEWERS.reduce((s,r) => s + r.w, 0);
+
+  // 1. group every line comment by the line it is anchored to
+  const byLine = {};
+  comments.filter(c => c.line).forEach(c => {
+    (byLine[c.line] = byLine[c.line] || []).push(c);
+  });
+
+  const ranked = [], conflicts = [];
+
+  Object.keys(byLine).forEach(lineId => {
+    const group = byLine[lineId];
+
+    // 2. cluster that line's comments by intent, summing reviewer weight
+    const clusters = {};
+    group.forEach(c => {
+      const k = c.intent;
+      clusters[k] = clusters[k] || {intent:k, weight:0, members:[]};
+      clusters[k].weight += reviewer(c.rid).w;
+      clusters[k].members.push(c);
+    });
+    const list = Object.values(clusters).sort((a,b) => b.weight - a.weight);
+    const top  = list[0];
+
+    // 3. a contradiction is two clusters on one line with opposing intents
+    const rival = list.slice(1).find(c => INTENTS[top.intent].opposites.includes(c.intent));
+    if(rival){
+      conflicts.push({line:lineId, a:top, b:rival});
+      return;
+    }
+
+    // 4. agreement = share of total reviewer weight backing the leading intent
+    ranked.push({
+      line:lineId,
+      intent:top.intent,
+      agreement:top.weight / totalW,
+      weight:top.weight,
+      members:top.members
+    });
+  });
+
+  ranked.sort((a,b) => b.agreement - a.agreement);
+
+  // weakest-line votes: the fixed question that guarantees overlap
+  const votes = {};
+  Object.keys(weak).forEach(rid => {
+    weak[rid].forEach(l => votes[l] = (votes[l] || 0) + reviewer(rid).w);
+  });
+
+  const docLevel = comments.filter(c => !c.line);
+  return {ranked, conflicts, votes, totalW, docLevel};
+}
+
+/* ---------------- rendering ---------------- */
+
+function renderCV(target, pickable){
+  const cv = CV_V1;
+  let h = '<div class="nm">' + cv.name + '</div><div class="ct">' + cv.contact + '</div>';
+  cv.sections.forEach(s => {
+    h += '<div class="sec">' + s.title + '</div>';
+    s.rows.forEach(r => {
+      h += '<div class="role"><span>' + r.role + '</span><em>' + r.meta + '</em></div>';
+      r.lines.forEach(l => {
+        const n   = comments.filter(c => c.line === l.id).length;
+        const mine= comments.filter(c => c.line === l.id && c.rid === meId).length;
+        const cnt = pickable ? mine : n;
+        const changed = (version === 2 && V2_EDITS[l.id]) ? " changed" : "";
+        const sel = (pickable && selected === l.id) ? " sel" : "";
+        h += '<div class="ln' + changed + sel + '" data-l="' + l.id + '"'
+           + (pickable ? ' onclick="pick(\'' + l.id + '\')"' : '') + '>'
+           + lineText(l.id)
+           + (cnt ? '<span class="pin">' + cnt + '</span>' : '')
+           + '</div>';
+      });
+    });
+  });
+  byId(target).innerHTML = h;
+}
+
+function runSynthesis(){
+  const {ranked, conflicts, votes, totalW, docLevel} = synthesise();
+  lastRanked = ranked;
+  let h = "";
+
+  h += '<h3>Do these first</h3>';
+  ranked.forEach((r, i) => {
+    const pct  = Math.round(r.agreement * 100);
+    const low  = r.members.length === 1;
+    h += '<div class="item' + (i === 0 ? ' top' : '') + '">';
+    h += '<div class="ihead"><span class="rank">' + (i+1) + '</span>'
+       + '<span class="intent">' + INTENTS[r.intent].label + '</span>'
+       + '<span class="agree">' + pct + '% weighted agreement</span></div>';
+    h += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+    h += '<div class="quote">' + lineText(r.line) + '</div>';
+    r.members.forEach(m => {
+      const rv = reviewer(m.rid);
+      h += '<div class="who"><b>' + rv.name + '</b>, ' + rv.cred
+         + ' <span class="chip">relevance ' + rv.w.toFixed(2) + '</span><br>' + m.text + '</div>';
+    });
+    if(low) h += '<div class="lowsig">One reviewer only. Treat as a suggestion, not a signal.</div>';
+    if(REWRITES[r.line] && pct >= 60 && version === 1){
+      h += '<div class="rw"><b>Suggested rewrite</b>' + REWRITES[r.line] + '</div>';
+    }
+    h += '</div>';
+  });
+
+  if(conflicts.length){
+    h += '<h3>Decide these yourself</h3>';
+    conflicts.forEach(c => {
+      const aw = reviewer(c.a.members[0].rid), bw = reviewer(c.b.members[0].rid);
+      const winner = c.a.weight >= c.b.weight ? aw : bw;
+      h += '<div class="conflict">';
+      h += '<div class="ihead"><span class="intent">Reviewers disagree</span></div>';
+      h += '<div class="quote">' + lineText(c.line) + '</div>';
+      h += '<div class="side">';
+      h += '<div><b>' + INTENTS[c.a.intent].label + '</b><br><span style="color:var(--muted)">'
+         + aw.name + ', ' + aw.cred + '</span><br>' + c.a.members[0].text + '</div>';
+      h += '<div><b>' + INTENTS[c.b.intent].label + '</b><br><span style="color:var(--muted)">'
+         + bw.name + ', ' + bw.cred + '</span><br>' + c.b.members[0].text + '</div>';
+      h += '</div>';
+      h += '<div class="lowsig">Weighted towards <b>' + winner.name + '</b> ('
+         + winner.w.toFixed(2) + ' vs ' + (winner === aw ? bw.w.toFixed(2) : aw.w.toFixed(2))
+         + ') because their function matches your target role.</div>';
+      h += '</div>';
+    });
+  }
+
+  const vs = Object.keys(votes).sort((a,b) => votes[b] - votes[a]);
+  h += '<h3>Weakest lines, by reviewer vote</h3><table><tr><th>Line</th><th>Weighted votes</th></tr>';
+  vs.forEach(l => {
+    h += '<tr><td style="font-family:Georgia,serif">' + lineText(l).slice(0,62) + '…</td><td>'
+       + votes[l].toFixed(2) + ' of ' + totalW.toFixed(2) + '</td></tr>';
+  });
+  h += '</table>';
+
+  if(docLevel.length){
+    h += '<h3>About the document</h3>';
+    docLevel.forEach(c => {
+      const rv = reviewer(c.rid);
+      h += '<div class="item"><div class="intent">' + INTENTS[c.intent].label + '</div>'
+         + '<div class="who"><b>' + rv.name + '</b>, ' + rv.cred + '<br>' + c.text + '</div></div>';
+    });
+  }
+
+  byId("synthOut").innerHTML = h;
+  byId("btnRun").textContent = "Re-run synthesis";
+  byId("cardRate").classList.remove("hidden");
+  renderRatings();
+}
+
+function uploadV2(){
+  if(version === 2){ return; }
+  version = 2;
+  byId("verLabel").textContent = "Version 2";
+  byId("btnV2").textContent = "v2 uploaded";
+  byId("btnV2").disabled = true;
+  renderCV("cvStudent", false);
+  if(lastRanked.length) runSynthesis();
+  renderVersions();
+  byId("cardVersions").classList.remove("hidden");
+}
+
+function renderVersions(){
+  let h = '<table><tr><th>Comment</th><th>From</th><th>Line</th><th>Read</th></tr>';
+  comments.filter(c => c.line).forEach(c => {
+    const changed = !!V2_EDITS[c.line];
+    const rv = reviewer(c.rid);
+    h += '<tr><td>' + INTENTS[c.intent].label + '</td><td>' + rv.name + '</td>'
+       + '<td><span class="st ' + (changed ? 'ch">changed' : 'un">unchanged') + '</span></td>'
+       + '<td style="color:var(--muted)">'
+       + (changed ? 'A metric is now present, which looks responsive to this comment.'
+                  : 'No edit on this line yet.')
+       + '</td></tr>';
+  });
+  h += '</table>';
+  byId("verOut").innerHTML = h;
+}
+
+function renderRatings(){
+  let h = "";
+  REVIEWERS.forEach(r => {
+    const n = ratings[r.id] || 0;
+    let stars = "";
+    for(let i=1;i<=5;i++) stars += (i<=n ? '<b>★</b>' : '★');
+    const adopted = comments.filter(c => c.rid === r.id && c.line && V2_EDITS[c.line]).length;
+    const total   = comments.filter(c => c.rid === r.id && c.line).length;
+    h += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">'
+       + '<div style="flex:1"><b>' + r.name + '</b><div class="sub" style="margin:0">' + r.cred
+       + ' · ' + adopted + ' of ' + total + ' suggestions adopted</div></div>'
+       + '<div class="stars" data-r="' + r.id + '">' + stars + '</div></div>';
+  });
+  byId("rateOut").innerHTML = h;
+  document.querySelectorAll('.stars').forEach(el => {
+    el.onclick = e => {
+      const box = el.getBoundingClientRect();
+      const n = Math.min(5, Math.max(1, Math.ceil((e.clientX - box.left) / (box.width/5))));
+      ratings[el.dataset.r] = n;
+      renderRatings();
+    };
+  });
+}
+
+/* ---------------- reviewer side ---------------- */
+
+function pick(id){ selected = (selected === id ? "" : id); renderReviewer(); }
+function clearSel(){ selected = ""; renderReviewer(); }
+
+function addComment(){
+  const text = byId("cmtText").value.trim();
+  if(!text){ byId("cmtText").focus(); return; }
+  comments.push({rid:meId, line:selected, intent:byId("intentSel").value, text:text});
+  byId("cmtText").value = "";
+  selected = "";
+  renderReviewer();
+}
+
+function toggleWeak(id){
+  const w = weak[meId];
+  const i = w.indexOf(id);
+  if(i >= 0) w.splice(i,1);
+  else if(w.length < 3) w.push(id);
+  renderReviewer();
+}
+
+function renderReviewer(){
+  const me = reviewer(meId);
+  byId("revName").textContent = me.name;
+  byId("revCred").textContent = me.cred + " · relevance to this CV's target role: " + me.w.toFixed(2);
+  byId("grantNote").innerHTML = "Arjun Mehta granted you access to this CV. "
+    + "Access expires <b>29 September</b>, after which this page closes to you.";
+
+  const others = comments.filter(c => c.rid !== meId).length;
+  byId("isoNote").innerHTML = '<b>' + others + ' comments from other reviewers are hidden from you.</b> '
+    + 'You cannot see who else was invited or what they said. That is what makes agreement mean something.';
+
+  renderCV("cvReviewer", true);
+
+  byId("selLine").innerHTML = selected
+    ? lineText(selected)
+    : '<span style="color:var(--muted)">Nothing selected — this will be a document-level comment</span>';
+
+  let wh = "";
+  allLines().forEach(l => {
+    const on = weak[meId].indexOf(l.id) >= 0;
+    wh += '<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer" onclick="toggleWeak(\'' + l.id + '\')">'
+        + '<span style="flex:none;width:15px;height:15px;margin-top:2px;border-radius:4px;border:1px solid var(--line);'
+        + 'background:' + (on ? 'var(--accent)' : 'transparent') + ';color:#fff;font-size:10px;text-align:center;line-height:14px">'
+        + (on ? '✓' : '') + '</span>'
+        + '<span style="font-family:Georgia,serif;font-size:12.5px;color:' + (on ? 'var(--ink)' : 'var(--muted)') + '">'
+        + l.t.slice(0,70) + '…</span></div>';
+  });
+  wh += '<div class="sub" style="margin:8px 0 0">' + weak[meId].length + ' of 3 chosen</div>';
+  byId("weakPick").innerHTML = wh;
+
+  const mine = comments.filter(c => c.rid === meId);
+  byId("myCmts").innerHTML = mine.length
+    ? mine.map(c => '<div class="item"><div class="intent" style="font-size:13px">'
+        + INTENTS[c.intent].label + (c.line ? '' : ' · document level') + '</div>'
+        + (c.line ? '<div class="quote">' + lineText(c.line) + '</div>' : '')
+        + '<div class="who">' + c.text + '</div></div>').join("")
+    : '<div class="empty">No comments yet. Click a line in the CV to start.</div>';
+}
+
+/* ---------------- boot ---------------- */
+
+function setView(v){
+  const s = v === "student";
+  byId("viewStudent").classList.toggle("hidden", !s);
+  byId("viewReviewer").classList.toggle("hidden", s);
+  if(s) renderCV("cvStudent", false); else renderReviewer();
+}
+
+/* ---------------- sign in ---------------- */
+
+function fillAcct(u){
+  byId("inU").value = u;
+  byId("inP").value = "demo123";
+  byId("gateErr").textContent = "";
+}
+
+function signIn(){
+  const u = byId("inU").value.trim().toLowerCase();
+  const p = byId("inP").value.trim();
+  const a = ACCOUNTS.find(x => x.u === u && x.p === p);
+  if(!a){
+    byId("gateErr").textContent = "That email and password do not match an account.";
+    return;
+  }
+  session = a;
+  if(a.role === "reviewer"){ meId = a.rid; selected = ""; }
+
+  byId("gate").classList.add("hidden");
+  byId("topbar").classList.remove("hidden");
+  byId("app").classList.remove("hidden");
+
+  const name = a.role === "student" ? a.label : reviewer(a.rid).name;
+  byId("whoName").textContent = name;
+  byId("whoRole").textContent = a.role;
+  setView(a.role === "student" ? "student" : "reviewer");
+}
+
+function signOut(){
+  session = null;
+  byId("inU").value = "";
+  byId("inP").value = "";
+  byId("gateErr").textContent = "";
+  byId("gate").classList.remove("hidden");
+  byId("topbar").classList.add("hidden");
+  byId("app").classList.add("hidden");
+}
+
+(function init(){
+  byId("acctList").innerHTML = ACCOUNTS.map(a => {
+    const who = a.role === "student" ? a.label + " · CV owner" : reviewer(a.rid).name + " · " + reviewer(a.rid).cred;
+    return '<button class="acct" onclick="fillAcct(\'' + a.u + '\')">'
+         + '<b>' + who + '</b><span>' + a.role + '</span></button>';
+  }).join("");
+  byId("intentSel").innerHTML = Object.keys(INTENTS).map(k =>
+    '<option value="' + k + '">' + INTENTS[k].label + '</option>').join("");
+})();
+</script>
+</body>
+</html>
